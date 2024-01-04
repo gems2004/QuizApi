@@ -42,14 +42,12 @@ class QuizAPIView(APIView):
             else:
                 return Response({'message': 'bad request 400'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if category is None and limit is None:
-            questions = list(collection.find())
-            serializer = QuestionSerializer(data=questions, many=True)
-            if serializer.is_valid():
-                return Response({'quiz_list': serializer.data}, status=status.HTTP_200_OK )
-            else:
-                return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        questions = list(collection.find())
+        serializer = QuestionSerializer(data=questions, many=True)
+        if serializer.is_valid():
+            return Response({'quiz_list': serializer.data}, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def post(self, request):
         data = request.data
         quiz = {
