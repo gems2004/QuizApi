@@ -15,6 +15,37 @@ class QuizAPIView(APIView):
         category = request.query_params.get('category')
         limit = request.query_params.get('limit')
         difficulty = request.query_params.get('difficulty')
+        if category and difficulty and limit:
+            pipeline = [ {'$match':{'difficulty': difficulty, 'category': category}},{'$sample': {'size': int(limit)}}]
+            questions = list(collection.aggregate(pipeline))
+            serializer = QuestionSerializer(data=questions, many=True)
+            if serializer.is_valid():
+                return Response(serializer.data, status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
+        if difficulty and limit:
+            pipeline = [ {'$match':{'difficulty': difficulty}},{'$sample': {'size': int(limit)}}]
+            questions = list(collection.aggregate(pipeline))
+            serializer = QuestionSerializer(data=questions, many=True)
+            if serializer.is_valid():
+                return Response(serializer.data, status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
+        if category and limit:
+            pipeline = [ {'$match':{'category': category}},{'$sample': {'size': int(limit)}}]
+            questions = list(collection.aggregate(pipeline))
+            serializer = QuestionSerializer(data=questions, many=True)
+            if serializer.is_valid():
+                return Response(serializer.data, status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
+        if category and difficulty:
+            questions = list(collection.find({'category': category, 'difficulty': difficulty}))
+            serializer = QuestionSerializer(data=questions, many=True)
+            if serializer.is_valid():
+                return Response(serializer.data, status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
         if category:
             questions = list(collection.find({'category': category}))
             serializer = QuestionSerializer(data=questions, many=True)
@@ -41,6 +72,7 @@ class QuizAPIView(APIView):
                     return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
             else:
                 return Response({'message': 'bad request 400'}, status=status.HTTP_400_BAD_REQUEST)
+        
 
         questions = list(collection.find())
         serializer = QuestionSerializer(data=questions, many=True)
@@ -49,14 +81,33 @@ class QuizAPIView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     def post(self, request):
+        bulk_request = request.query_params.get('bulk_request')
         data = request.data
+        if str(bulk_request) == 'true':
+            bulk_quiz = []
+            for quiz_data in data:
+                
+                quiz = {
+                    'category': quiz_data['category'],
+                    'difficulty': quiz_data['difficulty'],
+                    'question': quiz_data['question'],
+                    'correct_answer': quiz_data['correct_answer'],
+                    'answers': quiz_data['answers']
+                }
+                bulk_quiz.append(quiz)
+            serializer = QuestionSerializer(data=bulk_quiz, many=True)
+            if serializer.is_valid():
+                insert_bulk = collection.insert_many(bulk_quiz)
+                return Response({'message': 'success', 'quiz_ids': [str(id) for id in insert_bulk.inserted_ids]}, status.HTTP_200_OK)
+            else:
+                return Response({'message': serializer.errors}, status.HTTP_400_BAD_REQUEST)
         quiz = {
             'category': data['category'],
             'difficulty': data['difficulty'],
             'question': data['question'],
             'correct_answer': data['correct_answer'],
             'answers': data['answers']
-        }
+        }        
         serializer = QuestionSerializer(data=quiz, many=False)
         if serializer.is_valid():
             insert_col = collection.insert_one(quiz)
