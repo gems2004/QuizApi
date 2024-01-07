@@ -15,8 +15,11 @@ class QuizAPIView(APIView):
         category = request.query_params.get('category')
         limit = request.query_params.get('limit')
         difficulty = request.query_params.get('difficulty')
-        if category and difficulty and limit:
-            pipeline = [ {'$match':{'difficulty': difficulty, 'category': category}},{'$sample': {'size': int(limit)}}]
+        new_category_str = category.replace("-", " ")
+        category_list = new_category_str.split()
+        print(category_list)
+        if new_category_str and difficulty and limit:
+            pipeline = [ {'$match':{'difficulty': difficulty, 'category': {'$in': category_list}}},{'$sample': {'size': int(limit)}}]
             questions = list(collection.aggregate(pipeline))
             serializer = QuestionSerializer(data=questions, many=True)
             if serializer.is_valid():
@@ -31,23 +34,23 @@ class QuizAPIView(APIView):
                 return Response(serializer.data, status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
-        if category and limit:
-            pipeline = [ {'$match':{'category': category}},{'$sample': {'size': int(limit)}}]
+        if new_category_str and limit:
+            pipeline = [ {'$match':{'category': {'$in': category_list}}},{'$sample': {'size': int(limit)}}]
             questions = list(collection.aggregate(pipeline))
             serializer = QuestionSerializer(data=questions, many=True)
             if serializer.is_valid():
                 return Response(serializer.data, status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
-        if category and difficulty:
-            questions = list(collection.find({'category': category, 'difficulty': difficulty}))
+        if new_category_str and difficulty:
+            questions = list(collection.find({'category': {'$in': category_list}, 'difficulty': difficulty}))
             serializer = QuestionSerializer(data=questions, many=True)
             if serializer.is_valid():
                 return Response(serializer.data, status.HTTP_200_OK)
             else:
                 return Response(serializer.errors, status.HTTP_404_NOT_FOUND)
-        if category:
-            questions = list(collection.find({'category': category}))
+        if new_category_str:
+            questions = list(collection.find({'category': {'$in': category_list}}))
             serializer = QuestionSerializer(data=questions, many=True)
             if serializer.is_valid():
                 return Response(serializer.data, status=status.HTTP_200_OK)
